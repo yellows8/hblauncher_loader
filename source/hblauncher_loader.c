@@ -355,17 +355,6 @@ Result load_hblauncher()
 	return ret;
 }
 
-void displaymessage_waitbutton()
-{
-	printf("\nPress the A button to continue.\n");
-	while(1)
-	{
-		gspWaitForVBlank();
-		hidScanInput();
-		if(hidKeysDown() & KEY_A)break;
-	}
-}
-
 int main(int argc, char **argv)
 {
 	Result ret = 0;
