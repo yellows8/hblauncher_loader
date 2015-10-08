@@ -135,7 +135,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf Resources/hblauncher_loader.icn
+	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf Resources/hblauncher_loader.icn Resources/hblauncher_loader.bnr
 
 
 #---------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ DEPENDS	:=	$(OFILES:.o=.d)
 # main targets
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(NO_SMDH)),)
-$(OUTPUT).3dsx	:	$(OUTPUT).elf $(OUTPUT).smdh ../Resources/hblauncher_loader.icn
+$(OUTPUT).3dsx	:	$(OUTPUT).elf $(OUTPUT).smdh ../Resources/hblauncher_loader.icn ../Resources/hblauncher_loader.bnr
 else
 $(OUTPUT).3dsx	:	$(OUTPUT).elf
 endif
@@ -156,6 +156,9 @@ $(OUTPUT).elf	:	$(OFILES)
 
 ../Resources/hblauncher_loader.icn	:	$(APP_ICON)
 	bannertool makesmdh -i "$(APP_ICON)" -o "$@" -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)"
+
+../Resources/hblauncher_loader.bnr	:	../banner.png
+	bannertool makebanner -i "$<" -ca ../Resources/hblauncher_loader.cwav -o "$@"
 
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
