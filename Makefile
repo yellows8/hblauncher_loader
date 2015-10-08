@@ -135,7 +135,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf Resources/hblauncher_loader.icn Resources/hblauncher_loader.bnr
+	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(OUTPUT).cia Resources/hblauncher_loader.icn Resources/hblauncher_loader.bnr
 
 
 #---------------------------------------------------------------------------------
@@ -147,7 +147,7 @@ DEPENDS	:=	$(OFILES:.o=.d)
 # main targets
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(NO_SMDH)),)
-$(OUTPUT).3dsx	:	$(OUTPUT).elf $(OUTPUT).smdh ../Resources/hblauncher_loader.icn ../Resources/hblauncher_loader.bnr
+$(OUTPUT).3dsx	:	$(OUTPUT).elf $(OUTPUT).smdh $(OUTPUT).cia
 else
 $(OUTPUT).3dsx	:	$(OUTPUT).elf
 endif
@@ -155,10 +155,14 @@ endif
 $(OUTPUT).elf	:	$(OFILES)
 
 ../Resources/hblauncher_loader.icn	:	$(APP_ICON)
-	bannertool makesmdh -i "$(APP_ICON)" -o "$@" -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)"
+	@bannertool makesmdh -i "$(APP_ICON)" -o "$@" -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)"
 
 ../Resources/hblauncher_loader.bnr	:	../banner.png
-	bannertool makebanner -i "$<" -ca ../Resources/hblauncher_loader.cwav -o "$@"
+	@bannertool makebanner -i "$<" -ca ../Resources/hblauncher_loader.cwav -o "$@"
+
+$(OUTPUT).cia	:	$(OUTPUT).elf ../Resources/hblauncher_loader.icn ../Resources/hblauncher_loader.bnr
+	@makerom -f cia -o "$@" -elf $(OUTPUT).elf -rsf ../Resources/hblauncher_loader.rsf -icon ../Resources/hblauncher_loader.icn -banner ../Resources/hblauncher_loader.bnr -exefslogo
+	@echo "built ... hblauncher_loader.cia"
 
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
