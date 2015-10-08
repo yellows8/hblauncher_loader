@@ -35,7 +35,7 @@ INCLUDES	:=	include
 VERSION	:=	v1.0
 
 APP_TITLE	:=	hblauncher_loader $(VERSION)
-APP_DESCRIPTION	:=	NCCH app for booting the hblauncher-payload.
+APP_DESCRIPTION	:=	This boots the hblauncher-payload.
 APP_AUTHOR	:=	yellows8
 
 #---------------------------------------------------------------------------------
@@ -135,7 +135,7 @@ $(BUILD):
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf
+	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf Resources/hblauncher_loader.icn
 
 
 #---------------------------------------------------------------------------------
@@ -147,12 +147,15 @@ DEPENDS	:=	$(OFILES:.o=.d)
 # main targets
 #---------------------------------------------------------------------------------
 ifeq ($(strip $(NO_SMDH)),)
-$(OUTPUT).3dsx	:	$(OUTPUT).elf $(OUTPUT).smdh
+$(OUTPUT).3dsx	:	$(OUTPUT).elf $(OUTPUT).smdh ../Resources/hblauncher_loader.icn
 else
 $(OUTPUT).3dsx	:	$(OUTPUT).elf
 endif
 
 $(OUTPUT).elf	:	$(OFILES)
+
+../Resources/hblauncher_loader.icn	:	$(APP_ICON)
+	bannertool makesmdh -i "$(APP_ICON)" -o "$@" -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)"
 
 #---------------------------------------------------------------------------------
 # you need a rule like this for each extension you use as binary data
