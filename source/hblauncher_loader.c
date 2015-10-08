@@ -3,9 +3,8 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <errno.h>
 #include <3ds.h>
-
-#include "archive.h"
 
 extern u32 PAYLOAD_TEXTADDR[];
 extern u32 PAYLOAD_TEXTMAXSIZE;
@@ -151,10 +150,68 @@ Result http_download_payload(char *url, u32 *payloadsize)
 	return 0;
 }
 
+Result loadsd_payload(char *filepath, u32 *payloadsize)
+{
+	struct stat filestats;
+	FILE *f;
+	size_t readsize=0;
+
+	if(stat(filepath, &filestats)==-1)return errno;
+
+	*payloadsize = filestats.st_size;
+
+	if(filestats.st_size==0 || filestats.st_size>PAYLOAD_TEXTMAXSIZE)
+	{
+		printf("Invalid SD payload size: 0x%08x.\n", (unsigned int)filestats.st_size);
+		return -3;
+	}
+
+	f = fopen(filepath, "r");
+	if(f==NULL)return errno;
+
+	readsize = fread(filebuffer, 1, filestats.st_size, f);
+	fclose(f);
+
+	if(readsize!=filestats.st_size)
+	{
+		printf("fread() failed with the SD payload.\n");
+		return -2;
+	}
+
+	return 0;
+}
+
+Result savesd_payload(char *filepath, u32 payloadsize)
+{
+	FILE *f;
+	size_t writesize=0;
+
+	unlink(filepath);
+
+	f = fopen(filepath, "w+");
+	if(f==NULL)
+	{
+		printf("Failed to open the SD payload for writing.\n");
+		return errno;
+	}
+
+	writesize = fwrite(filebuffer, 1, payloadsize, f);
+	fclose(f);
+
+	if(writesize!=payloadsize)
+	{
+		printf("fwrite() failed with the SD payload.\n");
+		return -2;
+	}
+
+	return 0;
+}
+
 Result read_versionbin(FS_archive archive, FS_path fileLowPath, u8 *versionbin)
 {
 	Result ret = 0;
 	Handle filehandle = 0;
+	FILE *f;
 
 	ret = FSUSER_OpenFileDirectly(NULL, &filehandle, archive, fileLowPath, FS_OPEN_READ, 0x0);
 	if(ret!=0)
@@ -170,7 +227,21 @@ Result read_versionbin(FS_archive archive, FS_path fileLowPath, u8 *versionbin)
 		return ret;
 	}
 
-	ret = archive_readfile(SDArchive, "romfs:/version.bin", versionbin, 0x8);
+	f = fopen("romfs:/version.bin", "r");
+	if(f)
+	{
+		if(fread(versionbin, 1, 0x8, f)!=0x8)
+		{
+			printf("Failed to fread() version.bin.\n");
+			ret = -2;
+		}
+		fclose(f);
+	}
+	else
+	{
+		ret = -1;
+	}
+
 	romfsExit();
 
 	if(ret!=0)
@@ -197,8 +268,11 @@ Result load_hblauncher()
 	u8 cver_versionbin[0x8];
 
 	u32 payloadsize = 0, payloadsize_aligned = 0;
+	u32 payload_src = 0;
 
+	char payload_sysver[32];
 	char payloadurl[0x80];
+	char payload_sdpath[0x80];
 
 	void (*funcptr)(u32*, u32*) = NULL;
 	u32 *paramblk = NULL;
@@ -209,7 +283,9 @@ Result load_hblauncher()
 	memset(nver_versionbin, 0, sizeof(nver_versionbin));
 	memset(cver_versionbin, 0, sizeof(cver_versionbin));
 
+	memset(payload_sysver, 0, sizeof(payload_sysver));
 	memset(payloadurl, 0, sizeof(payloadurl));
+	memset(payload_sdpath, 0, sizeof(payload_sdpath));
 
 	archive.id = 0x2345678a;
 	archive.lowPath.type = PATH_BINARY;
@@ -264,27 +340,31 @@ Result load_hblauncher()
 		return ret;
 	}
 
-	snprintf(payloadurl, sizeof(payloadurl)-1, "http://smea.mtheall.com/get_payload.php?version=%s-%d-%d-%d-%d-%s", new3dsflag?"NEW":"OLD", cver_versionbin[2], cver_versionbin[1], cver_versionbin[0], nver_versionbin[2], regionids_table[region]);
+	snprintf(payload_sysver, sizeof(payload_sysver)-1, "%s-%d-%d-%d-%d-%s", new3dsflag?"NEW":"OLD", cver_versionbin[2], cver_versionbin[1], cver_versionbin[0], nver_versionbin[2], regionids_table[region]);
+	snprintf(payloadurl, sizeof(payloadurl)-1, "http://smea.mtheall.com/get_payload.php?version=%s", payload_sysver);
+	snprintf(payload_sdpath, sizeof(payload_sdpath)-1, "sdmc:/hblauncherloader_otherapp_payload_%s.bin", payload_sysver);
 
 	printf("Detected system-version: %s %d.%d.%d-%d %s\n", new3dsflag?"New3DS":"Old3DS", cver_versionbin[2], cver_versionbin[1], cver_versionbin[0], nver_versionbin[2], regionids_table[region]);
 
 	memset(filebuffer, 0, filebuffer_maxsize);
 
-	printf("Checking for the otherapp payload on SD...\n");
-	ret = archive_getfilesize(SDArchive, "sdmc:/hblauncherloader_otherapp_payload.bin", &payloadsize);
-	if(ret==0)
+	hidScanInput();
+
+	if((hidKeysHeld() & KEY_X) == 0)
 	{
-		if(payloadsize==0 || payloadsize>PAYLOAD_TEXTMAXSIZE)
-		{
-			printf("Invalid SD payload size: 0x%08x.\n", (unsigned int)payloadsize);
-			ret = -3;
-		}
+		printf("Since the X button isn't pressed, this will now check for the otherapp payload on SD, with the following filepath: %s\n", payload_sdpath);
+		ret = loadsd_payload(payload_sdpath, &payloadsize);
 	}
-	if(ret==0)ret = archive_readfile(SDArchive, "sdmc:/hblauncherloader_otherapp_payload.bin", filebuffer, payloadsize);
+	else
+	{
+		printf("Skipping SD payload load-attempt since the X button is pressed.\n");
+		ret = 1;
+	}
 
 	if(ret==0)
 	{
 		printf("The otherapp payload for this app already exists on SD, that will be used instead of downloading the payload via HTTP.\n");
+		payload_src = 0;
 	}
 	else
 	{
@@ -305,6 +385,8 @@ Result load_hblauncher()
 			printf("If the server isn't down, and the HTTP request was actually done, this may mean your system-version or region isn't supported by the hblauncher-payload currently.\n");
 			return ret;
 		}
+
+		if(ret==0)payload_src = 1;
 	}
 
 	printf("Initializing payload data etc...\n");
@@ -315,6 +397,30 @@ Result load_hblauncher()
 		printf("Invalid payload size: 0x%08x.\n", (unsigned int)payloadsize);
 		ret = -3;
 		return ret;
+	}
+
+	if(payload_src)
+	{
+		hidScanInput();
+
+		if(hidKeysHeld() & KEY_Y)
+		{
+			printf("Saving the downloaded payload to SD since the Y button is pressed...\n");
+			ret = savesd_payload(payload_sdpath, payloadsize);
+
+			if(ret!=0)
+			{
+				printf("Payload saving failed: 0x%08x.\n", (unsigned int)ret);
+			}
+			else
+			{
+				printf("Payload saving was successful.\n");
+			}
+		}
+		else
+		{
+			printf("Skipping saving the downloaded payload to SD since the Y button isn't pressed.\n");
+		}
 	}
 
 	memcpy(PAYLOAD_TEXTADDR, filebuffer, payloadsize_aligned);
@@ -342,7 +448,7 @@ Result load_hblauncher()
 	paramblk[0x1c>>2] = (u32)gxlowcmd_4;
 	paramblk[0x20>>2] = (u32)gsp_flushdcache;
 	paramblk[0x48>>2] = 0x8d;//flags
-	paramblk[0x58>>2] = &gspGpuHandle;
+	paramblk[0x58>>2] = (u32)&gspGpuHandle;
 
 	printf("Jumping into the payload...\n");
 
@@ -416,7 +522,7 @@ int main(int argc, char **argv)
 
 	httpcExit();
 
-	if(ret!=0)printf("An error occured, please report this to here if it persists(or comment on an already existing issue if needed), with an image of your 3DS system with the bottom-screen: https://github.com/yellows8/hblauncher_loader/issues\n");
+	if(ret!=0)printf("An error occured, please report this to here if it persists(or comment on an already existing issue if needed), with an image of your 3DS system: https://github.com/yellows8/hblauncher_loader/issues\n");
 
 	printf("Press the START button to exit.\n");
 	// Main loop
