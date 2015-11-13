@@ -142,7 +142,6 @@ AccessControlInfo:
     WaitSynchronizationN: 37
     FlushProcessDataCache: 84
     ControlProcessMemory: 112
-    Backdoor: 123
 
   # Service List
   # Maximum 34 services (32 if firmware is prior to 9.6.0)

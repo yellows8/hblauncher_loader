@@ -24,26 +24,6 @@ char regionids_table[7][4] = {//http://3dbrew.org/wiki/Nandrw/sys/SecureInfo_A
 "TWN"
 };
 
-u32 NVer_tidlow_regionarray[7] = {
-0x00016202, //JPN
-0x00016302, //USA
-0x00016102, //EUR
-0x00016202, //"AUS"
-0x00016402, //CHN
-0x00016502, //KOR
-0x00016602, //TWN
-};
-
-u32 CVer_tidlow_regionarray[7] = {
-0x00017202, //JPN
-0x00017302, //USA
-0x00017102, //EUR
-0x00017202, //"AUS"
-0x00017402, //CHN
-0x00017502, //KOR
-0x00017602 //TWN
-};
-
 void gxlowcmd_4(u32* inadr, u32* outadr, u32 size, u32 width0, u32 height0, u32 width1, u32 height1, u32 flags)
 {
 	GX_SetTextureCopy(NULL, inadr, width0 | (height0<<16), outadr, width1 | (height1<<16), size, flags);
@@ -59,7 +39,7 @@ Result http_getactual_payloadurl(char *requrl, char *outurl, u32 outurl_maxsize)
 	Result ret=0;
 	httpcContext context;
 
-	ret = httpcOpenContext(&context, requrl, 0);
+	ret = httpcOpenContext(&context, requrl, 1);
 	if(ret!=0)return ret;
 
 	ret = httpcAddRequestHeaderField(&context, "User-Agent", "hblauncher_loader/"VERSION);
@@ -90,7 +70,7 @@ Result http_download_payload(char *url, u32 *payloadsize)
 	u32 contentsize=0;
 	httpcContext context;
 
-	ret = httpcOpenContext(&context, url, 0);
+	ret = httpcOpenContext(&context, url, 1);
 	if(ret!=0)return ret;
 
 	ret = httpcAddRequestHeaderField(&context, "User-Agent", "hblauncher_loader/"VERSION);
@@ -207,65 +187,14 @@ Result savesd_payload(char *filepath, u32 payloadsize)
 	return 0;
 }
 
-Result read_versionbin(FS_archive archive, FS_path fileLowPath, u8 *versionbin)
-{
-	Result ret = 0;
-	Handle filehandle = 0;
-	FILE *f;
-
-	ret = FSUSER_OpenFileDirectly(NULL, &filehandle, archive, fileLowPath, FS_OPEN_READ, 0x0);
-	if(ret!=0)
-	{
-		printf("Failed to open the RomFS image for *Ver: 0x%08x.\n", (unsigned int)ret);
-		return ret;
-	}
-
-	ret = romfsInitFromFile(filehandle, 0x0);
-	if(ret!=0)
-	{
-		printf("Failed to mount the RomFS image for *Ver: 0x%08x.\n", (unsigned int)ret);
-		return ret;
-	}
-
-	f = fopen("romfs:/version.bin", "r");
-	if(f)
-	{
-		if(fread(versionbin, 1, 0x8, f)!=0x8)
-		{
-			printf("Failed to fread() version.bin.\n");
-			ret = -2;
-		}
-		fclose(f);
-	}
-	else
-	{
-		ret = -1;
-	}
-
-	romfsExit();
-
-	if(ret!=0)
-	{
-		printf("Failed to read the *Ver version.bin: 0x%08x.\n", (unsigned int)ret);
-		return ret;
-	}
-
-	return 0;
-}
-
 Result load_hblauncher()
 {
 	Result ret = 0;
 	u8 region=0;
 	u8 new3dsflag = 0;
-	u32 archive_lowpath_data[0x10>>2];//+0 = programID-low, +4 = programID-high, +8 = u8 mediatype.
-	u32 file_lowpath_data[0x14>>2];
 
-	FS_archive archive;
-	FS_path fileLowPath;
-
-	u8 nver_versionbin[0x8];
-	u8 cver_versionbin[0x8];
+	OS_VersionBin nver_versionbin;
+	OS_VersionBin cver_versionbin;
 
 	u32 payloadsize = 0, payloadsize_aligned = 0;
 	u32 payload_src = 0;
@@ -277,26 +206,12 @@ Result load_hblauncher()
 	void (*funcptr)(u32*, u32*) = NULL;
 	u32 *paramblk = NULL;
 
-	memset(archive_lowpath_data, 0, sizeof(file_lowpath_data));
-	memset(file_lowpath_data, 0, sizeof(file_lowpath_data));
-
-	memset(nver_versionbin, 0, sizeof(nver_versionbin));
-	memset(cver_versionbin, 0, sizeof(cver_versionbin));
+	memset(&nver_versionbin, 0, sizeof(OS_VersionBin));
+	memset(&cver_versionbin, 0, sizeof(OS_VersionBin));
 
 	memset(payload_sysver, 0, sizeof(payload_sysver));
 	memset(payloadurl, 0, sizeof(payloadurl));
 	memset(payload_sdpath, 0, sizeof(payload_sdpath));
-
-	archive.id = 0x2345678a;
-	archive.lowPath.type = PATH_BINARY;
-	archive.lowPath.size = 0x10;
-	archive.lowPath.data = (u8*)archive_lowpath_data;
-
-	fileLowPath.type = PATH_BINARY;
-	fileLowPath.size = 0x14;
-	fileLowPath.data = (u8*)file_lowpath_data;
-
-	archive_lowpath_data[1] = 0x000400DB;
 
 	printf("Getting system-version/system-info etc...\n");
 
@@ -322,29 +237,18 @@ Result load_hblauncher()
 
 	APT_CheckNew3DS(NULL, &new3dsflag);
 
-	archive_lowpath_data[0] = NVer_tidlow_regionarray[region];
-	ret = read_versionbin(archive, fileLowPath, nver_versionbin);
-
+	ret = osGetSystemVersionData(&nver_versionbin, &cver_versionbin);
 	if(ret!=0)
 	{
-		printf("Failed to read the NVer version.bin: 0x%08x.\n", (unsigned int)ret);
+		printf("Failed to load the system-version: 0x%08x.\n", (unsigned int)ret);
 		return ret;
 	}
 
-	archive_lowpath_data[0] = CVer_tidlow_regionarray[region];
-	ret = read_versionbin(archive, fileLowPath, cver_versionbin);
-
-	if(ret!=0)
-	{
-		printf("Failed to read the CVer version.bin: 0x%08x.\n", (unsigned int)ret);
-		return ret;
-	}
-
-	snprintf(payload_sysver, sizeof(payload_sysver)-1, "%s-%d-%d-%d-%d-%s", new3dsflag?"NEW":"OLD", cver_versionbin[2], cver_versionbin[1], cver_versionbin[0], nver_versionbin[2], regionids_table[region]);
+	snprintf(payload_sysver, sizeof(payload_sysver)-1, "%s-%d-%d-%d-%d-%s", new3dsflag?"NEW":"OLD", cver_versionbin.mainver, cver_versionbin.minor, cver_versionbin.build, nver_versionbin.mainver, regionids_table[region]);
 	snprintf(payloadurl, sizeof(payloadurl)-1, "http://smea.mtheall.com/get_payload.php?version=%s", payload_sysver);
 	snprintf(payload_sdpath, sizeof(payload_sdpath)-1, "sdmc:/hblauncherloader_otherapp_payload_%s.bin", payload_sysver);
 
-	printf("Detected system-version: %s %d.%d.%d-%d %s\n", new3dsflag?"New3DS":"Old3DS", cver_versionbin[2], cver_versionbin[1], cver_versionbin[0], nver_versionbin[2], regionids_table[region]);
+	printf("Detected system-version: %s %d.%d.%d-%d %s\n", new3dsflag?"New3DS":"Old3DS", cver_versionbin.mainver, cver_versionbin.minor, cver_versionbin.build, nver_versionbin.mainver, regionids_table[region]);
 
 	memset(filebuffer, 0, filebuffer_maxsize);
 
