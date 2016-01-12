@@ -26,12 +26,12 @@ char regionids_table[7][4] = {//http://3dbrew.org/wiki/Nandrw/sys/SecureInfo_A
 
 void gxlowcmd_4(u32* inadr, u32* outadr, u32 size, u32 width0, u32 height0, u32 width1, u32 height1, u32 flags)
 {
-	GX_SetTextureCopy(NULL, inadr, width0 | (height0<<16), outadr, width1 | (height1<<16), size, flags);
+	GX_TextureCopy(inadr, width0 | (height0<<16), outadr, width1 | (height1<<16), size, flags);
 }
 
 Result gsp_flushdcache(u8* adr, u32 size)
 {
-	return GSPGPU_FlushDataCache(NULL, adr, size);
+	return GSPGPU_FlushDataCache(adr, size);
 }
 
 Result http_getactual_payloadurl(char *requrl, char *outurl, u32 outurl_maxsize)
@@ -215,7 +215,7 @@ Result load_hblauncher()
 
 	printf("Getting system-version/system-info etc...\n");
 
-	ret = initCfgu();
+	ret = cfguInit();
 	if(ret!=0)
 	{
 		printf("Failed to init cfgu: 0x%08x.\n", (unsigned int)ret);
@@ -233,9 +233,9 @@ Result load_hblauncher()
 		ret = -9;
 		return ret;
 	}
-	exitCfgu();
+	cfguExit();
 
-	APT_CheckNew3DS(NULL, &new3dsflag);
+	APT_CheckNew3DS(&new3dsflag);
 
 	ret = osGetSystemVersionData(&nver_versionbin, &cver_versionbin);
 	if(ret!=0)

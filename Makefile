@@ -52,7 +52,7 @@ CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DVERSION=\"$(VERSION)\"
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-nostartfiles -T../hblauncher_loader.ld -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+LDFLAGS	=	-nostartfiles -T$(DEVKITARM)/arm-none-eabi/lib/3dsx.ld -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS	:= -lctru -lm
 
