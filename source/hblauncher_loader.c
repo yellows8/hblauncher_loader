@@ -39,7 +39,7 @@ Result http_getactual_payloadurl(char *requrl, char *outurl, u32 outurl_maxsize)
 	Result ret=0;
 	httpcContext context;
 
-	ret = httpcOpenContext(&context, requrl, 1);
+	ret = httpcOpenContext(&context, HTTPC_METHOD_GET, requrl, 1);
 	if(ret!=0)return ret;
 
 	ret = httpcAddRequestHeaderField(&context, "User-Agent", "hblauncher_loader/"VERSION);
@@ -70,7 +70,7 @@ Result http_download_payload(char *url, u32 *payloadsize)
 	u32 contentsize=0;
 	httpcContext context;
 
-	ret = httpcOpenContext(&context, url, 1);
+	ret = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1);
 	if(ret!=0)return ret;
 
 	ret = httpcAddRequestHeaderField(&context, "User-Agent", "hblauncher_loader/"VERSION);
@@ -307,9 +307,9 @@ Result load_hblauncher()
 	{
 		hidScanInput();
 
-		if(hidKeysHeld() & KEY_Y)
+		if(!(hidKeysHeld() & KEY_Y))
 		{
-			printf("Saving the downloaded payload to SD since the Y button is pressed...\n");
+			printf("Saving the downloaded payload to SD since the Y button isn't pressed...\n");
 			ret = savesd_payload(payload_sdpath, payloadsize);
 
 			if(ret!=0)
@@ -323,7 +323,7 @@ Result load_hblauncher()
 		}
 		else
 		{
-			printf("Skipping saving the downloaded payload to SD since the Y button isn't pressed.\n");
+			printf("Skipping saving the downloaded payload to SD since the Y button is pressed.\n");
 		}
 	}
 
@@ -394,7 +394,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	ret = httpcInit();
+	ret = httpcInit(0);
 	if(ret!=0)
 	{
 		printf("Failed to initialize HTTPC: 0x%08x.\n", (unsigned int)ret);
