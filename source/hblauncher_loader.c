@@ -277,7 +277,14 @@ Result load_hblauncher()
 		if(ret!=0)
 		{
 			printf("Failed to request the actual payload URL: 0x%08x.\n", (unsigned int)ret);
-			printf("If the server isn't down, and the HTTP request was actually done, this may mean your system-version or region isn't supported by the hblauncher-payload currently.\n");
+			if(ret==0xd8a0a046)
+			{
+				printf("No usable Internet-connection is likely available.\n");
+			}
+			else
+			{
+				printf("If the server isn't down, and the HTTP request was actually done, this may mean your system-version or region isn't supported by the hblauncher-payload currently.\n");
+			}
 			return ret;
 		}
 
@@ -286,7 +293,14 @@ Result load_hblauncher()
 		if(ret!=0)
 		{
 			printf("Failed to download the actual payload with HTTP: 0x%08x.\n", (unsigned int)ret);
-			printf("If the server isn't down, and the HTTP request was actually done, this may mean your system-version or region isn't supported by the hblauncher-payload currently.\n");
+			if(ret==0xd8a0a046)
+			{
+				printf("No usable Internet-connection is likely available.\n");
+			}
+			else
+			{
+				printf("If the server isn't down, and the HTTP request was actually done, this may mean your system-version or region isn't supported by the hblauncher-payload currently.\n");
+			}
 			return ret;
 		}
 
@@ -426,7 +440,7 @@ int main(int argc, char **argv)
 
 	httpcExit();
 
-	if(ret!=0)printf("An error occured, please report this to here if it persists(or comment on an already existing issue if needed), with an image of your 3DS system: https://github.com/yellows8/hblauncher_loader/issues\n");
+	if(ret!=0 && ret!=0xd8a0a046)printf("An error occured, please report this to here if it persists(or comment on an already existing issue if needed), with an image of your 3DS system: https://github.com/yellows8/hblauncher_loader/issues\n");
 
 	printf("Press the START button to exit.\n");
 	// Main loop
@@ -437,7 +451,7 @@ int main(int argc, char **argv)
 
 		u32 kDown = hidKeysDown();
 		if (kDown & KEY_START)
-			break; // break in order to return to hbmenu
+			break;
 	}
 
 	// Exit services
