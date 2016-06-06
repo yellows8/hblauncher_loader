@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <3ds.h>
 
+#include "builtin_rootca_der.h"
+
 extern u32 PAYLOAD_TEXTADDR[];
 extern u32 PAYLOAD_TEXTMAXSIZE;
 
@@ -14,7 +16,7 @@ extern Handle gspGpuHandle;
 u8 *filebuffer;
 u32 filebuffer_maxsize;
 
-char regionids_table[7][4] = {//http://3dbrew.org/wiki/Nandrw/sys/SecureInfo_A
+char regionids_table[7][4] = {//https://www.3dbrew.org/wiki/Nandrw/sys/SecureInfo_A
 "JPN",
 "USA",
 "EUR",
@@ -49,6 +51,13 @@ Result http_getactual_payloadurl(char *requrl, char *outurl, u32 outurl_maxsize)
 		return ret;
 	}
 
+	ret = httpcAddTrustedRootCA(&context, (u8*)builtin_rootca_der, builtin_rootca_der_size);
+	if(R_FAILED(ret))
+	{
+		httpcCloseContext(&context);
+		return ret;
+	}
+
 	ret = httpcBeginRequest(&context);
 	if(ret!=0)
 	{
@@ -56,6 +65,7 @@ Result http_getactual_payloadurl(char *requrl, char *outurl, u32 outurl_maxsize)
 		return ret;
 	}
 
+	memset(outurl, 0, outurl_maxsize);
 	ret = httpcGetResponseHeader(&context, "Location", outurl, outurl_maxsize);
 
 	httpcCloseContext(&context);
@@ -75,6 +85,20 @@ Result http_download_payload(char *url, u32 *payloadsize)
 
 	ret = httpcAddRequestHeaderField(&context, "User-Agent", "hblauncher_loader/"VERSION);
 	if(ret!=0)
+	{
+		httpcCloseContext(&context);
+		return ret;
+	}
+
+	ret = httpcAddTrustedRootCA(&context, (u8*)builtin_rootca_der, builtin_rootca_der_size);
+	if(R_FAILED(ret))
+	{
+		httpcCloseContext(&context);
+		return ret;
+	}
+
+	ret = httpcAddDefaultCert(&context, SSLC_DefaultRootCert_DigiCert_EV);
+	if(R_FAILED(ret))
 	{
 		httpcCloseContext(&context);
 		return ret;
@@ -213,7 +237,7 @@ Result load_hblauncher()
 	memset(payloadurl, 0, sizeof(payloadurl));
 	memset(payload_sdpath, 0, sizeof(payload_sdpath));
 
-	printf("Getting system-version/system-info etc...\n");
+	printf("Getting system-info etc...\n");
 
 	ret = cfguInit();
 	if(ret!=0)
@@ -245,7 +269,7 @@ Result load_hblauncher()
 	}
 
 	snprintf(payload_sysver, sizeof(payload_sysver)-1, "%s-%d-%d-%d-%d-%s", new3dsflag?"NEW":"OLD", cver_versionbin.mainver, cver_versionbin.minor, cver_versionbin.build, nver_versionbin.mainver, regionids_table[region]);
-	snprintf(payloadurl, sizeof(payloadurl)-1, "http://smea.mtheall.com/get_payload.php?version=%s", payload_sysver);
+	snprintf(payloadurl, sizeof(payloadurl)-1, "https://smea.mtheall.com/get_payload.php?version=%s", payload_sysver);
 	snprintf(payload_sdpath, sizeof(payload_sdpath)-1, "sdmc:/hblauncherloader_otherapp_payload_%s.bin", payload_sysver);
 
 	printf("Detected system-version: %s %d.%d.%d-%d %s\n", new3dsflag?"New3DS":"Old3DS", cver_versionbin.mainver, cver_versionbin.minor, cver_versionbin.build, nver_versionbin.mainver, regionids_table[region]);
@@ -272,7 +296,7 @@ Result load_hblauncher()
 	}
 	else
 	{
-		printf("Requesting the actual payload URL with HTTP...\n");
+		printf("Requesting the actual payload URL with HTTPC...\n");
 		ret = http_getactual_payloadurl(payloadurl, payloadurl, sizeof(payloadurl));
 		if(ret!=0)
 		{
@@ -288,7 +312,15 @@ Result load_hblauncher()
 			return ret;
 		}
 
-		printf("Downloading the actual payload with HTTP...\n");
+		//Use https instead of http with the below site.
+		ret = http_download_payload(payloadurl, &payloadsize);
+		if(strncmp(payloadurl, "http://smealum.github.io/", 25)==0)
+		{
+			memmove(&payloadurl[5], &payloadurl[4], strlen(payloadurl)-4);
+			payloadurl[4] = 's';
+		}
+
+		printf("Downloading the actual payload with HTTPC...\n");
 		ret = http_download_payload(payloadurl, &payloadsize);
 		if(ret!=0)
 		{
@@ -374,7 +406,7 @@ Result load_hblauncher()
 	funcptr(paramblk, (u32*)(0x10000000-0x1000));
 
 	ret = 0xff;
-	printf("The payload returned back into the app, this should *never* happen with the actual hblauncher-payload.\n");
+	printf("The payload returned back into the app, this should *never* happen with the actual *hax-payload.\n");
 
 	return ret;
 }
