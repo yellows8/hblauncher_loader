@@ -40,6 +40,12 @@ APP_TITLE	:=	hblauncher_loader $(VERSION)
 APP_DESCRIPTION	:=	This boots the *hax payload.
 APP_AUTHOR	:=	yellows8
 
+DEFINES	:=	
+
+ifneq ($(VERBOSE),)
+	DEFINES	:=	$(DEFINES) -DVERBOSE
+endif
+
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
@@ -49,7 +55,7 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations \
 			-fomit-frame-pointer -ffunction-sections \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DVERSION=\"$(VERSION)\"
+CFLAGS	+=	$(INCLUDE) -DARM11 -D_3DS -DVERSION=\"$(VERSION)\" $(DEFINES)
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++11
 

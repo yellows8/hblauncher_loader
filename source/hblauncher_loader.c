@@ -232,7 +232,9 @@ Result load_hblauncher()
 	memset(payloadurl, 0, sizeof(payloadurl));
 	memset(payload_sdpath, 0, sizeof(payload_sdpath));
 
+	#ifdef VERBOSE
 	printf("Getting system-info etc...\n");
+	#endif
 
 	ret = cfguInit();
 	if(ret!=0)
@@ -269,7 +271,9 @@ Result load_hblauncher()
 
 	mkdir("sdmc:/hblauncherloader", 0777);
 
+	#ifdef VERBOSE
 	printf("Detected system-version: %s %d.%d.%d-%d %s\n", new3dsflag?"New3DS":"Old3DS", cver_versionbin.mainver, cver_versionbin.minor, cver_versionbin.build, nver_versionbin.mainver, regionids_table[region]);
+	#endif
 
 	memset(filebuffer, 0, filebuffer_maxsize);
 
@@ -277,18 +281,24 @@ Result load_hblauncher()
 
 	if((hidKeysHeld() & KEY_X) == 0)
 	{
+		#ifdef VERBOSE
 		printf("Since the X button isn't pressed, this will now check for the otherapp payload on SD, with the following filepath: %s\n", payload_sdpath);
+		#endif
 		ret = loadsd_payload(payload_sdpath, &payloadsize);
 	}
 	else
 	{
+		#ifdef VERBOSE
 		printf("Skipping SD payload load-attempt since the X button is pressed.\n");
+		#endif
 		ret = 1;
 	}
 
 	if(ret==0)
 	{
+		#ifdef VERBOSE
 		printf("The otherapp payload for this app already exists on SD, that will be used instead of downloading the payload via HTTP.\n");
+		#endif
 		payload_src = 0;
 	}
 	else
@@ -337,7 +347,9 @@ Result load_hblauncher()
 		if(ret==0)payload_src = 1;
 	}
 
+	#ifdef VERBOSE
 	printf("Initializing payload data etc...\n");
+	#endif
 
 	payloadsize_aligned = (payloadsize + 0xfff) & ~0xfff;
 	if(payloadsize_aligned > PAYLOAD_TEXTMAXSIZE)
@@ -367,7 +379,9 @@ Result load_hblauncher()
 		}
 		else
 		{
+			#ifdef VERBOSE
 			printf("Skipping saving the downloaded payload to SD since the Y button is pressed.\n");
+			#endif
 		}
 	}
 
@@ -398,7 +412,9 @@ Result load_hblauncher()
 	paramblk[0x48>>2] = 0x8d;//flags
 	paramblk[0x58>>2] = (u32)&gspGpuHandle;
 
+	#ifdef VERBOSE
 	printf("Jumping into the payload...\n");
+	#endif
 
 	funcptr = (void*)PAYLOAD_TEXTADDR;
 	funcptr(paramblk, (u32*)(0x10000000-0x1000));
