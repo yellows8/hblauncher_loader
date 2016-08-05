@@ -265,7 +265,9 @@ Result load_hblauncher()
 
 	snprintf(payload_sysver, sizeof(payload_sysver)-1, "%s-%d-%d-%d-%d-%s", new3dsflag?"NEW":"OLD", cver_versionbin.mainver, cver_versionbin.minor, cver_versionbin.build, nver_versionbin.mainver, regionids_table[region]);
 	snprintf(payloadurl, sizeof(payloadurl)-1, "https://smea.mtheall.com/get_payload.php?version=%s", payload_sysver);
-	snprintf(payload_sdpath, sizeof(payload_sdpath)-1, "sdmc:/hblauncherloader_otherapp_payload_%s.bin", payload_sysver);
+	snprintf(payload_sdpath, sizeof(payload_sdpath)-1, "sdmc:/hblauncherloader/%s.bin", payload_sysver);
+
+	mkdir("sdmc:/hblauncherloader", 0777);
 
 	printf("Detected system-version: %s %d.%d.%d-%d %s\n", new3dsflag?"New3DS":"Old3DS", cver_versionbin.mainver, cver_versionbin.minor, cver_versionbin.build, nver_versionbin.mainver, regionids_table[region]);
 
