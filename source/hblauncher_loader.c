@@ -13,7 +13,7 @@ extern u32 PAYLOAD_TEXTMAXSIZE;
 
 extern Handle gspGpuHandle;
 
-u8 *filebuffer;
+u8 *filebuffer = NULL;
 u32 filebuffer_maxsize;
 
 char regionids_table[7][4] = {//https://www.3dbrew.org/wiki/Nandrw/sys/SecureInfo_A
@@ -31,21 +31,16 @@ void gxlowcmd_4(u32* inadr, u32* outadr, u32 size, u32 width0, u32 height0, u32 
 	GX_TextureCopy(inadr, width0 | (height0<<16), outadr, width1 | (height1<<16), size, flags);
 }
 
-Result gsp_flushdcache(u8* adr, u32 size)
-{
-	return GSPGPU_FlushDataCache(adr, size);
-}
-
 Result http_getactual_payloadurl(char *requrl, char *outurl, u32 outurl_maxsize)
 {
 	Result ret=0;
 	httpcContext context;
 
 	ret = httpcOpenContext(&context, HTTPC_METHOD_GET, requrl, 1);
-	if(ret!=0)return ret;
+	if(R_FAILED(ret))return ret;
 
 	ret = httpcAddRequestHeaderField(&context, "User-Agent", "hblauncher_loader/"VERSION);
-	if(ret!=0)
+	if(R_FAILED(ret))
 	{
 		httpcCloseContext(&context);
 		return ret;
@@ -59,7 +54,7 @@ Result http_getactual_payloadurl(char *requrl, char *outurl, u32 outurl_maxsize)
 	}
 
 	ret = httpcBeginRequest(&context);
-	if(ret!=0)
+	if(R_FAILED(ret))
 	{
 		httpcCloseContext(&context);
 		return ret;
@@ -70,7 +65,7 @@ Result http_getactual_payloadurl(char *requrl, char *outurl, u32 outurl_maxsize)
 
 	httpcCloseContext(&context);
 
-	return 0;
+	return ret;
 }
 
 Result http_download_payload(char *url, u32 *payloadsize)
@@ -81,10 +76,10 @@ Result http_download_payload(char *url, u32 *payloadsize)
 	httpcContext context;
 
 	ret = httpcOpenContext(&context, HTTPC_METHOD_GET, url, 1);
-	if(ret!=0)return ret;
+	if(R_FAILED(ret))return ret;
 
 	ret = httpcAddRequestHeaderField(&context, "User-Agent", "hblauncher_loader/"VERSION);
-	if(ret!=0)
+	if(R_FAILED(ret))
 	{
 		httpcCloseContext(&context);
 		return ret;
@@ -105,14 +100,14 @@ Result http_download_payload(char *url, u32 *payloadsize)
 	}
 
 	ret = httpcBeginRequest(&context);
-	if(ret!=0)
+	if(R_FAILED(ret))
 	{
 		httpcCloseContext(&context);
 		return ret;
 	}
 
 	ret = httpcGetResponseStatusCode(&context, &statuscode, 0);
-	if(ret!=0)
+	if(R_FAILED(ret))
 	{
 		httpcCloseContext(&context);
 		return ret;
@@ -126,7 +121,7 @@ Result http_download_payload(char *url, u32 *payloadsize)
 	}
 
 	ret=httpcGetDownloadSizeState(&context, NULL, &contentsize);
-	if(ret!=0)
+	if(R_FAILED(ret))
 	{
 		httpcCloseContext(&context);
 		return ret;
@@ -141,7 +136,7 @@ Result http_download_payload(char *url, u32 *payloadsize)
 	}
 
 	ret = httpcDownloadData(&context, filebuffer, contentsize, NULL);
-	if(ret!=0)
+	if(R_FAILED(ret))
 	{
 		httpcCloseContext(&context);
 		return ret;
@@ -215,7 +210,7 @@ Result load_hblauncher()
 {
 	Result ret = 0;
 	u8 region=0;
-	u8 new3dsflag = 0;
+	bool new3dsflag = 0;
 
 	OS_VersionBin nver_versionbin;
 	OS_VersionBin cver_versionbin;
@@ -296,8 +291,10 @@ Result load_hblauncher()
 	}
 	else
 	{
+		memset(filebuffer, 0, filebuffer_maxsize);
+
 		printf("Requesting the actual payload URL with HTTPC...\n");
-		ret = http_getactual_payloadurl(payloadurl, payloadurl, sizeof(payloadurl));
+		ret = http_getactual_payloadurl(payloadurl, payloadurl, sizeof(payloadurl)-2);
 		if(ret!=0)
 		{
 			printf("Failed to request the actual payload URL: 0x%08x.\n", (unsigned int)ret);
@@ -307,13 +304,12 @@ Result load_hblauncher()
 			}
 			else
 			{
-				printf("If the server isn't down, and the HTTP request was actually done, this may mean your system-version or region isn't supported by the hblauncher-payload currently.\n");
+				printf("If the server isn't down, and the HTTP request was actually done, this may mean your system-version or region isn't supported by the *hax payload currently.\n");
 			}
 			return ret;
 		}
 
 		//Use https instead of http with the below site.
-		ret = http_download_payload(payloadurl, &payloadsize);
 		if(strncmp(payloadurl, "http://smealum.github.io/", 25)==0)
 		{
 			memmove(&payloadurl[5], &payloadurl[4], strlen(payloadurl)-4);
@@ -331,7 +327,7 @@ Result load_hblauncher()
 			}
 			else
 			{
-				printf("If the server isn't down, and the HTTP request was actually done, this may mean your system-version or region isn't supported by the hblauncher-payload currently.\n");
+				printf("If the server isn't down, and the HTTP request was actually done, this may mean your system-version or region isn't supported by the *hax payload currently.\n");
 			}
 			return ret;
 		}
@@ -396,7 +392,7 @@ Result load_hblauncher()
 	memset(paramblk, 0, 0x10000);
 
 	paramblk[0x1c>>2] = (u32)gxlowcmd_4;
-	paramblk[0x20>>2] = (u32)gsp_flushdcache;
+	paramblk[0x20>>2] = (u32)GSPGPU_FlushDataCache;
 	paramblk[0x48>>2] = 0x8d;//flags
 	paramblk[0x58>>2] = (u32)&gspGpuHandle;
 
@@ -440,37 +436,40 @@ int main(int argc, char **argv)
 		}
 	}
 
-	ret = httpcInit(0);
-	if(ret!=0)
-	{
-		printf("Failed to initialize HTTPC: 0x%08x.\n", (unsigned int)ret);
-		if(ret==0xd8e06406)
-		{
-			printf("The HTTPC service is inaccessible.\n");
-		}
-	}
-
 	if(ret==0)
 	{
-		filebuffer_maxsize = PAYLOAD_TEXTMAXSIZE;
+		ret = httpcInit(0);
+		if(ret!=0)
+		{
+			printf("Failed to initialize HTTPC: 0x%08x.\n", (unsigned int)ret);
+			if(ret==0xd8e06406)
+			{
+				printf("The HTTPC service is inaccessible.\n");
+			}
+		}
 
-		filebuffer = (u8*)malloc(filebuffer_maxsize);
-		if(filebuffer==NULL)
+		if(ret==0)
 		{
-			printf("Failed to allocate memory.\n");
-			ret = -1;
+			filebuffer_maxsize = PAYLOAD_TEXTMAXSIZE;
+
+			filebuffer = (u8*)malloc(filebuffer_maxsize);
+			if(filebuffer==NULL)
+			{
+				printf("Failed to allocate memory.\n");
+				ret = -1;
+			}
+			else
+			{
+				memset(filebuffer, 0, filebuffer_maxsize);
+			}
 		}
-		else
-		{
-			memset(filebuffer, 0, filebuffer_maxsize);
-		}
+
+		if(ret==0)ret = load_hblauncher();
+
+		free(filebuffer);
+
+		httpcExit();
 	}
-
-	ret = load_hblauncher();
-
-	free(filebuffer);
-
-	httpcExit();
 
 	if(ret!=0 && ret!=0xd8a0a046)printf("An error occured, please report this to here if it persists(or comment on an already existing issue if needed), with an image of your 3DS system: https://github.com/yellows8/hblauncher_loader/issues\n");
 

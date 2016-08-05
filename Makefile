@@ -37,7 +37,7 @@ INCLUDES	:=	include
 VERSION	:=	v1.2
 
 APP_TITLE	:=	hblauncher_loader $(VERSION)
-APP_DESCRIPTION	:=	This boots the hblauncher-payload.
+APP_DESCRIPTION	:=	This boots the *hax payload.
 APP_AUTHOR	:=	yellows8
 
 #---------------------------------------------------------------------------------
