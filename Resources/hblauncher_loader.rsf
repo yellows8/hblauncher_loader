@@ -152,6 +152,7 @@ AccessControlInfo:
    - gsp::Gpu
    - hid:USER
    - http:C
+   - am:sys
 
 
 SystemControlInfo:
@@ -165,6 +166,7 @@ SystemControlInfo:
   # So act, nfc and qtm are commented for 4.x support. Uncomment if you need these.
   # <module name>:<module titleid>
   Dependency: 
+    am: 0x0004013000001502L
     cfg: 0x0004013000001702L
     gsp: 0x0004013000001c02L
     hid: 0x0004013000001d02L

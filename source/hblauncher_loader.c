@@ -106,7 +106,7 @@ Result http_download_payload(char *url, u32 *payloadsize)
 		return ret;
 	}
 
-	ret = httpcGetResponseStatusCode(&context, &statuscode, 0);
+	ret = httpcGetResponseStatusCode(&context, &statuscode);
 	if(R_FAILED(ret))
 	{
 		httpcCloseContext(&context);
@@ -218,9 +218,13 @@ Result load_hblauncher()
 	u32 payloadsize = 0, payloadsize_aligned = 0;
 	u32 payload_src = 0;
 
+	u64 menu_programid = 0;
+	AM_TitleEntry menu_title_entry;
+
 	char payload_sysver[32];
 	char payloadurl[0x80];
 	char payload_sdpath[0x80];
+	char tmpstr[256];
 
 	void (*funcptr)(u32*, u32*) = NULL;
 	u32 *paramblk = NULL;
@@ -231,6 +235,7 @@ Result load_hblauncher()
 	memset(payload_sysver, 0, sizeof(payload_sysver));
 	memset(payloadurl, 0, sizeof(payloadurl));
 	memset(payload_sdpath, 0, sizeof(payload_sdpath));
+	memset(tmpstr, 0, sizeof(tmpstr));
 
 	#ifdef VERBOSE
 	printf("Getting system-info etc...\n");
@@ -265,9 +270,24 @@ Result load_hblauncher()
 		return ret;
 	}
 
+	ret = amInit();
+	if(ret==0)ret = APT_GetAppletInfo(APPID_HOMEMENU, &menu_programid, NULL, NULL, NULL, NULL);
+	if(ret==0)ret = AM_GetTitleInfo(MEDIATYPE_NAND, 1, &menu_programid, &menu_title_entry);
+	amExit();
+
 	snprintf(payload_sysver, sizeof(payload_sysver)-1, "%s-%d-%d-%d-%d-%s", new3dsflag?"NEW":"OLD", cver_versionbin.mainver, cver_versionbin.minor, cver_versionbin.build, nver_versionbin.mainver, regionids_table[region]);
 	snprintf(payloadurl, sizeof(payloadurl)-1, "https://smea.mtheall.com/get_payload.php?version=%s", payload_sysver);
 	snprintf(payload_sdpath, sizeof(payload_sdpath)-1, "sdmc:/hblauncherloader/%s.bin", payload_sysver);
+
+	if(ret==0)//Send the actual Home Menu title-version in the request URL when the menuver was loaded successfully. This is needed for when the title-version is different from what it should be with the current CVer. With this the server script will determine the Home Menu portion of the output URL using the input menuver instead of the system-version.
+	{
+		snprintf(tmpstr, sizeof(tmpstr)-1, "&menuver=%u", menu_title_entry.version);
+		strncat(payloadurl, tmpstr, sizeof(payloadurl)-1);
+
+		#ifdef VERBOSE
+		printf("Using menuver: v%u.\n", menu_title_entry.version);
+		#endif
+	}
 
 	mkdir("sdmc:/hblauncherloader", 0777);
 
