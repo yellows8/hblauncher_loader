@@ -46,6 +46,8 @@ ifneq ($(VERBOSE),)
 	DEFINES	:=	$(DEFINES) -DVERBOSE
 endif
 
+ICON_FLAGS	:=	--flags visible,ratingrequired,recordusage --cero 153 --esrb 153 --usk 153 --pegigen 153 --pegiptr 153 --pegibbfc 153 --cob 153 --grb 153 --cgsrr 153
+
 #---------------------------------------------------------------------------------
 # options for code generation
 #---------------------------------------------------------------------------------
@@ -170,7 +172,7 @@ endif
 $(OUTPUT).elf	:	$(OFILES)
 
 ../Resources/hblauncher_loader.icn	:	$(APP_ICON)
-	@bannertool makesmdh -i "$(APP_ICON)" -o "$@" -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)"
+	@bannertool makesmdh -i "$(APP_ICON)" -o "$@" -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)" $(ICON_FLAGS)
 
 ../Resources/hblauncher_loader.bnr	:	../banner.png
 	@bannertool makebanner -i "$<" -ca ../Resources/hblauncher_loader.cwav -o "$@"
