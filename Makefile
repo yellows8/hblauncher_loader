@@ -174,9 +174,6 @@ $(OUTPUT).elf	:	$(OFILES)
 ../Resources/hblauncher_loader.icn	:	$(APP_ICON)
 	@bannertool makesmdh -i "$(APP_ICON)" -o "$@" -s "$(APP_TITLE)" -l "$(APP_TITLE)" -p "$(APP_AUTHOR)" $(ICON_FLAGS)
 
-../Resources/hblauncher_loader.bnr	:	../banner.png
-	@bannertool makebanner -i "$<" -ca ../Resources/hblauncher_loader.cwav -o "$@"
-
 $(OUTPUT).cia	:	$(OUTPUT).elf ../Resources/hblauncher_loader.icn ../Resources/hblauncher_loader.bnr
 	@makerom -f cia -o "$@" -elf $(OUTPUT).elf -rsf ../Resources/hblauncher_loader.rsf -icon ../Resources/hblauncher_loader.icn -banner ../Resources/hblauncher_loader.bnr -exefslogo -ver 1072
 	@echo "built ... hblauncher_loader.cia"
