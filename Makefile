@@ -34,7 +34,7 @@ DATA		:=	data
 INCLUDES	:=	include
 #ROMFS		:=	romfs
 
-VERSION	:=	v1.2
+VERSION	:=	v1.3
 
 APP_TITLE	:=	hblauncher_loader $(VERSION)
 APP_DESCRIPTION	:=	This boots the *hax payload.
@@ -178,7 +178,7 @@ $(OUTPUT).elf	:	$(OFILES)
 	@bannertool makebanner -i "$<" -ca ../Resources/hblauncher_loader.cwav -o "$@"
 
 $(OUTPUT).cia	:	$(OUTPUT).elf ../Resources/hblauncher_loader.icn ../Resources/hblauncher_loader.bnr
-	@makerom -f cia -o "$@" -elf $(OUTPUT).elf -rsf ../Resources/hblauncher_loader.rsf -icon ../Resources/hblauncher_loader.icn -banner ../Resources/hblauncher_loader.bnr -exefslogo -ver 1056
+	@makerom -f cia -o "$@" -elf $(OUTPUT).elf -rsf ../Resources/hblauncher_loader.rsf -icon ../Resources/hblauncher_loader.icn -banner ../Resources/hblauncher_loader.bnr -exefslogo -ver 1072
 	@echo "built ... hblauncher_loader.cia"
 
 #---------------------------------------------------------------------------------
